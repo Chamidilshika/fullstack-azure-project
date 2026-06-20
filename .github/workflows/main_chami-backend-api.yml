@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - chami-backend-api
+name: Build and deploy Node.js app to Azure Web App - chami-frontend
 
 on:
   push:
@@ -12,54 +9,42 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout GitHub Action
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
-        with:
-          node-version: '24.x'
-
-      - name: npm install, build, and test
+      - name: Zip frontend folder for deployment
         run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+          cd frontend
+          zip -r ../release.zip .
+          cd ..
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_2412436699594DDB8E91D6F2E3E9CDE1 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_899078D0A39640DBBAF35E3692EDA831 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_347C6D52CC9449D797933A0B651044EF }}
+
+      - name: Unzip artifact for deployment
+        run: unzip node-app.zip -d . || unzip release.zip -d . || true
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'chami-backend-api'
-          slot-name: 'Production'
-          package: .
-          
+          app-name: 'chami-frontend'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_080D3F1... }} # KEEP YOUR ORIGINAL SECRET NAME HERE
